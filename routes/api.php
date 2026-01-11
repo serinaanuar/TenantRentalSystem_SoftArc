@@ -82,10 +82,11 @@ Route::post('/check-name-availability', function (Request $request) {
 
 Route::post('/check-ic-availability', [AdminController::class, 'checkIcAvailability']);
 
-Route::post('/check-name', 'AdminController@checkNameUniqueness');
-Route::post('/check-email', 'AdminController@checkEmailUniqueness');
-Route::post('/check-ic', 'AdminController@checkICUniqueness');
-Route::post('/check-passport', 'AdminController@checkPassportUniqueness');
+Route::post('/check-name', [AdminController::class, 'checkNameUniqueness']);
+Route::post('/check-email', [AdminController::class, 'checkEmailUniqueness']);
+Route::post('/check-ic', [AdminController::class, 'checkIcUniqueness']);
+Route::post('/check-passport', [AdminController::class, 'checkPassportUniqueness']);
+
 
 //send welcome email to new user
 Route::post('/send-welcome-email', [AdminController::class, 'sendWelcomeEmail']);

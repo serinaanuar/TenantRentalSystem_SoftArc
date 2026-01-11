@@ -25,8 +25,13 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Models\User;
 use App\Http\Controllers\SellerController;
+
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\SellerMaintenanceController;
+
+use App\Http\Controllers\PaymentController;
+
+(Add payment module (invoice, payment, gateway adapter, routes, views))
 
 // Main Route
 Route::get('/', function () {
@@ -197,6 +202,38 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/api/chat-rooms/unread-counts', [ChatController::class, 'getUnreadCounts']);
     Route::post('/api/messages/mark-as-read', [ChatController::class, 'markMessagesAsRead']);
 });
+Route::middleware(['auth'])->group(function () {
+
+    Route::get('/payments/invoices/{invoiceId}', 
+        [PaymentController::class, 'viewInvoice']
+    )->name('payments.viewInvoice');
+
+    Route::post('/payments/invoices/{invoiceId}/pay', 
+        [PaymentController::class, 'payRent']
+    )->name('payments.payRent');
+
+    Route::get('/payments/history', 
+        [PaymentController::class, 'viewPaymentHistory']
+    )->name('payments.history');
+
+    Route::get('/payments/invoices', function () {
+    $userId = auth()->id();
+    $invoices = \App\Models\Invoice::where('user_id', $userId)->latest()->get();
+    return response()->json($invoices);
+})->name('payments.invoices');
+
+
+});
+// ==================================================
+use Illuminate\Support\Facades\Schema;
+
+Route::get('/debug-columns', function () {
+    return response()->json([
+        'invoices' => Schema::hasTable('invoices') ? Schema::getColumnListing('invoices') : 'no invoices table',
+        'payments' => Schema::hasTable('payments') ? Schema::getColumnListing('payments') : 'no payments table',
+    ]);
+});
+
 
 Broadcast::routes(['middleware' => ['auth:sanctum']]);
 
