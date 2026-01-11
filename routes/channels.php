@@ -25,3 +25,12 @@ Broadcast::channel('chat.{roomId}', function ($user, $roomId) {
 Broadcast::channel('user-status.{userId}', function ($user, $userId) {
     return true; // 允许所有认证用户订阅
 });
+
+Broadcast::channel('maintenance.user.{userId}', function ($user, $userId) {
+    return (int) $user->id === (int) $userId;
+});
+
+Broadcast::channel('maintenance.property.{propertyId}', function ($user, $propertyId) {
+    $property = \App\Models\Property::find($propertyId);
+    return $property && ($user->id === $property->user_id || $user->id === $property->buyer_id);
+});

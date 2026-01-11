@@ -25,6 +25,8 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Models\User;
 use App\Http\Controllers\SellerController;
+use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\SellerMaintenanceController;
 
 // Main Route
 Route::get('/', function () {
@@ -68,6 +70,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/chat/{chatRoom}', [ChatController::class, 'showChat'])->name('chat.show');
     Route::put('/api/properties/{property}/status', [PropertyStatusController::class, 'updateStatus']);
     Route::get('/api/properties/{property}/potential-buyers', [PropertyStatusController::class, 'getPotentialBuyers']);
+    Route::post('/api/property/{propertyId}/transaction', [PropertyStatusController::class, 'processTransaction']);
     Route::post('/api/chat-rooms/create', [ChatController::class, 'createRoom']);
   
 });
@@ -296,4 +299,29 @@ Route::get('/email/reset', function () {
     return view('emails.reset-password');
 });
 
+// Maintenance Routes - User (Tenant/Buyer)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/maintenance', [MaintenanceController::class, 'index'])->name('maintenance.index');
+    Route::post('/maintenance', [MaintenanceController::class, 'store'])->name('maintenance.store');
+    Route::get('/maintenance/{maintenanceRequest}', [MaintenanceController::class, 'show'])->name('maintenance.show');
+    Route::get('/api/maintenance/user-requests', [MaintenanceController::class, 'getUserRequests'])->name('api.maintenance.user-requests');
+});
+
+// Maintenance Routes - Seller (Property Owner)
+Route::middleware(['auth'])->prefix('seller')->group(function () {
+    Route::get('/maintenance', [SellerMaintenanceController::class, 'index'])->name('seller.maintenance.index');
+    Route::put('/maintenance/{maintenanceRequest}/status', [SellerMaintenanceController::class, 'updateStatus'])->name('seller.maintenance.update-status');
+    Route::get('/maintenance/{maintenanceRequest}', [SellerMaintenanceController::class, 'show'])->name('seller.maintenance.show');
+    Route::get('/api/maintenance/seller-requests', [SellerMaintenanceController::class, 'getSellerRequests'])->name('api.maintenance.seller-requests');
+    Route::get('/api/maintenance/statistics', [SellerMaintenanceController::class, 'getStatistics'])->name('api.maintenance.statistics');
+});
+
+// Test route to verify seller maintenance is accessible
+Route::get('/test-seller-maintenance', function() {
+    return response()->json([
+        'status' => 'working',
+        'url' => route('seller.maintenance.index'),
+        'user' => auth()->check() ? auth()->user()->email : 'not logged in'
+    ]);
+});
 

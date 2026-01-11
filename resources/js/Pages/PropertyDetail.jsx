@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { Head, Link } from "@inertiajs/react";
+import { Head, Link, router } from "@inertiajs/react";
 import Header from "@/Layouts/HeaderMenu";
 import Map from "@/Components/Map";
 import PropertyModal from "@/Components/Property/PropertyModal";
+import axios from "axios";
 
 const PropertyDetail = ({ property, auth }) => {
     const [mapPosition, setMapPosition] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const allPhotos = [...(property?.property_photos || [])];
     // console.log(("allPhotos", allPhotos));
@@ -96,6 +98,49 @@ const PropertyDetail = ({ property, auth }) => {
     const handleGoBackClick = (e) => {
         e.preventDefault();
         window.history.back();
+    };
+
+    const handleBuyRent = async () => {
+        if (!auth.user) {
+            alert('Please login to proceed');
+            router.visit('/login');
+            return;
+        }
+
+        if (auth.user.id === property.user_id) {
+            alert('You cannot buy/rent your own property');
+            return;
+        }
+
+        const action = property.purchase === 'For Rent' ? 'rent' : 'buy';
+        const confirmMessage = `Are you sure you want to ${action} this property?\n\nProperty: ${property.property_name}\nPrice: RM ${Number(property.price).toLocaleString()}${property.purchase === 'For Rent' ? '/month' : ''}`;
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        setIsProcessing(true);
+
+        try {
+            const response = await axios.post(`/api/property/${property.id}/transaction`, {
+                action: action
+            });
+
+            alert(response.data.message);
+            router.reload();
+        } catch (error) {
+            console.error('Transaction error:', error);
+            alert(error.response?.data?.message || 'Failed to process transaction. Please try again.');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const canBuyOrRent = () => {
+        if (!auth.user) return false;
+        if (auth.user.id === property.user_id) return false;
+        if (property.status && property.status !== 'available') return false;
+        return true;
     };
 
     return (
@@ -287,6 +332,40 @@ const PropertyDetail = ({ property, auth }) => {
                                         </svg>
                                         {property?.square_feet} sq ft
                                     </p>
+                                    
+                                    {/* Buy/Rent Button */}
+                                    {canBuyOrRent() && (
+                                        <button
+                                            onClick={handleBuyRent}
+                                            disabled={isProcessing}
+                                            className={`mt-4 w-full ${themeClasses.button} text-white px-6 py-3 rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
+                                        >
+                                            {isProcessing ? (
+                                                <>
+                                                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Processing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                    </svg>
+                                                    {property?.purchase === "For Rent" ? "Rent This Property" : "Buy This Property"}
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
+                                    
+                                    {property.status && property.status !== 'available' && (
+                                        <div className="mt-4 px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-center font-semibold">
+                                            {property.status === 'sold' && 'SOLD'}
+                                            {property.status === 'rented' && 'RENTED'}
+                                            {property.status === 'cancelled' && 'NOT AVAILABLE'}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

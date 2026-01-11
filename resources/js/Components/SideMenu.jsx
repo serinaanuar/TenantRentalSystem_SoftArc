@@ -5,14 +5,46 @@ import { route } from "ziggy-js";
 
 
 const SideMenu = ({ menuState, links = [], phoneOnlyLinks = [], smallScreenOnly = false }) => {
-    const [openMenus, setOpenMenus] = useState({});
+    const [openMenus, setOpenMenus] = useState(() => {
+        // Load saved menu state from localStorage
+        const saved = localStorage.getItem('sideMenuState');
+        return saved ? JSON.parse(saved) : {};
+    });
 
     const toggleMenu = (parentId) => {
-        setOpenMenus((prev) => ({
-            ...prev,
-            [parentId]: !prev[parentId],
-        }));
+        setOpenMenus((prev) => {
+            const newState = {
+                ...prev,
+                [parentId]: !prev[parentId],
+            };
+            // Save to localStorage
+            localStorage.setItem('sideMenuState', JSON.stringify(newState));
+            return newState;
+        });
     };
+
+    // Check current route and auto-open the relevant parent menu
+    useEffect(() => {
+        const currentPath = window.location.pathname;
+        
+        links.forEach((link) => {
+            if (link.type === "parent" && link.links) {
+                const hasActiveChild = link.links.some((child) => {
+                    if (!child.href) return false;
+                    const childRoute = child.href.includes('.') ? route(child.href) : child.href;
+                    return currentPath === childRoute || currentPath.startsWith(childRoute);
+                });
+                
+                if (hasActiveChild && !openMenus[link.id]) {
+                    setOpenMenus((prev) => {
+                        const newState = { ...prev, [link.id]: true };
+                        localStorage.setItem('sideMenuState', JSON.stringify(newState));
+                        return newState;
+                    });
+                }
+            }
+        });
+    }, [links]);
 
     const handleLogout = async () => {
         try {
