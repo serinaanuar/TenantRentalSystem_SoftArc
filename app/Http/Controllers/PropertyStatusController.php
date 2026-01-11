@@ -51,6 +51,60 @@ class PropertyStatusController extends Controller
         ]);
     }
 
+    public function processTransaction(Request $request, $propertyId)
+    {
+        $property = Property::findOrFail($propertyId);
+        $user = Auth::user();
+
+        // Check if user is trying to buy/rent their own property
+        if ($property->user_id === $user->id) {
+            return response()->json([
+                'message' => 'You cannot buy or rent your own property'
+            ], 403);
+        }
+
+        // Check if property is available
+        if ($property->status && $property->status !== 'available') {
+            return response()->json([
+                'message' => 'This property is no longer available'
+            ], 400);
+        }
+
+        $action = $request->input('action'); // 'buy' or 'rent'
+        
+        if ($action === 'rent' && $property->purchase !== 'For Rent') {
+            return response()->json([
+                'message' => 'This property is not available for rent'
+            ], 400);
+        }
+
+        if ($action === 'buy' && $property->purchase !== 'For Sale') {
+            return response()->json([
+                'message' => 'This property is not available for sale'
+            ], 400);
+        }
+
+        // Update property status
+        $property->status = ($action === 'rent') ? 'rented' : 'sold';
+        $property->buyer_id = $user->id;
+        $property->transaction_date = now();
+        $property->save();
+
+        // Create chat room between buyer and seller
+        ChatRoom::firstOrCreate([
+            'buyer_id' => $user->id,
+            'seller_id' => $property->user_id,
+            'property_id' => $property->id,
+        ]);
+
+        $actionText = ($action === 'rent') ? 'rented' : 'purchased';
+        
+        return response()->json([
+            'message' => "Congratulations! You have successfully {$actionText} this property. You can now submit maintenance requests for it.",
+            'property' => $property
+        ]);
+    }
+
     private function canUpdateStatus(Property $property)
     {
         $user = Auth::user();
