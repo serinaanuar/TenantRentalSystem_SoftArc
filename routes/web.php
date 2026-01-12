@@ -31,7 +31,7 @@ use App\Http\Controllers\SellerMaintenanceController;
 
 use App\Http\Controllers\PaymentController;
 
-(Add payment module (invoice, payment, gateway adapter, routes, views))
+// TODO: Add payment module (invoice, payment, gateway adapter, routes, views)
 
 // Main Route
 Route::get('/', function () {
@@ -345,12 +345,12 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Maintenance Routes - Seller (Property Owner)
-Route::middleware(['auth'])->prefix('seller')->group(function () {
-    Route::get('/maintenance', [SellerMaintenanceController::class, 'index'])->name('seller.maintenance.index');
-    Route::put('/maintenance/{maintenanceRequest}/status', [SellerMaintenanceController::class, 'updateStatus'])->name('seller.maintenance.update-status');
-    Route::get('/maintenance/{maintenanceRequest}', [SellerMaintenanceController::class, 'show'])->name('seller.maintenance.show');
-    Route::get('/api/maintenance/seller-requests', [SellerMaintenanceController::class, 'getSellerRequests'])->name('api.maintenance.seller-requests');
-    Route::get('/api/maintenance/statistics', [SellerMaintenanceController::class, 'getStatistics'])->name('api.maintenance.statistics');
+Route::prefix('seller')->group(function () {
+    Route::get('/maintenance', [SellerMaintenanceController::class, 'index'])->middleware(['auth'])->name('seller.maintenance.index');
+    Route::put('/maintenance/{maintenanceRequest}/status', [SellerMaintenanceController::class, 'updateStatus'])->middleware(['auth'])->name('seller.maintenance.update-status');
+    Route::get('/maintenance/{maintenanceRequest}', [SellerMaintenanceController::class, 'show'])->middleware(['auth'])->name('seller.maintenance.show');
+    Route::get('/api/maintenance/seller-requests', [SellerMaintenanceController::class, 'getSellerRequests'])->middleware(['auth'])->name('api.maintenance.seller-requests');
+    Route::get('/api/maintenance/statistics', [SellerMaintenanceController::class, 'getStatistics'])->middleware(['auth'])->name('api.maintenance.statistics');
 });
 
 // Test route to verify seller maintenance is accessible
@@ -360,5 +360,11 @@ Route::get('/test-seller-maintenance', function() {
         'url' => route('seller.maintenance.index'),
         'user' => auth()->check() ? auth()->user()->email : 'not logged in'
     ]);
+});
+
+// Helper route to list all users
+Route::get('/list-users', function() {
+    $users = \App\Models\User::select('id', 'email', 'role', 'firstname', 'lastname')->get();
+    return response()->json($users);
 });
 
