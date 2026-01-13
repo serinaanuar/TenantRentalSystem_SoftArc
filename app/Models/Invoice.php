@@ -15,7 +15,7 @@ class Invoice extends Model
         'property_id',
         'amount',
         'due_date',
-        'status', // unpaid | paid | overdue (example)
+        'status', // UNPAID | PAID | OVERDUE (example)
     ];
 
     protected $casts = [
@@ -25,16 +25,17 @@ class Invoice extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
     }
 
     public function property(): BelongsTo
     {
-        return $this->belongsTo(Property::class, 'property_id');
+        return $this->belongsTo(Property::class);
     }
 
     public function payments(): HasMany
     {
-        return $this->hasMany(Payment::class, 'invoice_id');
+        return $this->hasMany(Payment::class);
     }
 }
+

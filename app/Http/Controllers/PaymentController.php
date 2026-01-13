@@ -3,111 +3,74 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-
 use App\Models\Invoice;
 use App\Models\Payment;
-
-use App\Payments\Adapters\FakeGatewayAdapter;
-use App\Payments\Gateways\FakeGatewayApi;
+use App\Payments\PaymentUI;
 
 class PaymentController extends Controller
 {
-    /**
-     * List all invoices for the logged-in user
-     */
-    public function listInvoices()
+    private PaymentUI $paymentUI; // Target interface
+
+    public function __construct(PaymentUI $paymentUI)
     {
-        $userId = auth()->id();
-
-        $invoices = Invoice::where('user_id', $userId)
-            ->latest()
-            ->get();
-
-        return Inertia::render('Payments/Invoices', [
-            'invoices' => $invoices
-        ]);
+        $this->paymentUI = $paymentUI;
     }
 
-    /**
-     * View a single invoice for the logged-in user
-     */
-    public function viewInvoice($invoiceId)
+    public function viewInvoice(Request $request, $invoiceId)
     {
-        $userId = auth()->id(); // tenant = user
+        $userId = auth()->id();
 
         $invoice = Invoice::where('id', $invoiceId)
             ->where('user_id', $userId)
             ->firstOrFail();
 
-        return Inertia::render('Payments/Invoice', [
-            'invoice' => $invoice
-        ]);
+        return view('payments.invoice', compact('invoice'));
     }
 
-    /**
-     * Pay rent for an invoice (Adapter Pattern used here)
-     */
     public function payRent(Request $request, $invoiceId)
     {
         $request->validate([
             'method' => 'required|string',
         ]);
 
-        $userId = auth()->id(); // tenant = user
+        $userId = auth()->id();
 
         $invoice = Invoice::where('id', $invoiceId)
             ->where('user_id', $userId)
             ->firstOrFail();
 
-        // Optional safety: prevent double payment
-        if (strtolower((string) $invoice->status) === 'paid' || strtoupper((string) $invoice->status) === 'PAID') {
-            return redirect()->back()->with('error', 'This invoice is already paid.');
+        // ✅ Adapter pattern here (Controller uses PaymentUI, not PaymentPage directly)
+        $result = $this->paymentUI->handlePayment((float)$invoice->amount, (string)$request->input('method'));
+
+        if (!$result['success']) {
+            return back()->with('error', $result['message']);
         }
 
-        // Adapter pattern usage
-        $gateway = new FakeGatewayAdapter(new FakeGatewayApi());
-
-        $result = $gateway->charge([
-            'amount'  => (float) $invoice->amount,
-            'method'  => (string) $request->input('method'),
-            'user_id' => (int) $userId,
-        ]);
-
-        if (!($result['success'] ?? false)) {
-            return redirect()->back()->with('error', $result['message'] ?? 'Payment failed.');
-        }
-
-        // Save payment
         Payment::create([
-            'invoice_id'     => $invoice->id,
-            'user_id'        => $userId,
-            'amount_paid'    => $invoice->amount,
-            'method'         => $request->input('method'),
-            'transaction_id' => $result['transaction_id'] ?? null,
-            'payment_date'   => now(),
+            'invoice_id' => $invoice->id,
+            'user_id' => $userId,                 // ✅ user not tenant
+            'amount_paid' => $invoice->amount,
+            'method' => $request->input('method'),
+            'transaction_id' => $result['transaction_id'],
+            'payment_date' => now(),
+            'status' => 'success',
         ]);
 
-        // Update invoice status
         $invoice->update(['status' => 'PAID']);
 
         return redirect()->route('payments.invoices')
-            ->with('success', 'Payment successful. Transaction: ' . ($result['transaction_id'] ?? 'N/A'));
+            ->with('success', 'Payment successful. Transaction: ' . $result['transaction_id']);
     }
 
-    /**
-     * View payment history for the logged-in user
-     */
     public function viewPaymentHistory()
     {
         $userId = auth()->id();
 
         $payments = Payment::where('user_id', $userId)
-            ->orderByDesc('payment_date')
+            ->latest()
             ->get();
 
-        return Inertia::render('Payments/History', [
-            'payments' => $payments
-        ]);
+        return view('payments.history', compact('payments'));
     }
 }
+

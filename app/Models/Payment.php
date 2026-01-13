@@ -13,11 +13,11 @@ class Payment extends Model
         'user_id',
         'invoice_id',
         'amount_paid',
-        'method',       // card | bank_transfer | cash (example)
+        'method',        // CARD | FPX | CASH (example)
         'payment_date',
-        'gateway',      // e.g. "Stripe", "ToyyibPay" (optional)
-        'gateway_ref',  // transaction reference (optional)
-        'status',       // success | failed | pending
+        'gateway',       // optional (internal gateway name)
+        'gateway_ref',   // optional (transaction reference)
+        'status',        // success | failed | pending
     ];
 
     protected $casts = [
@@ -27,12 +27,11 @@ class Payment extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
     }
 
     public function invoice(): BelongsTo
     {
-        return $this->belongsTo(Invoice::class, 'invoice_id');
+        return $this->belongsTo(Invoice::class);
     }
 }
-

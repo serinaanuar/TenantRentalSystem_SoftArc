@@ -6,39 +6,36 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up()
-{
-    Schema::create('invoices', function (Blueprint $table) {
-        $table->id();
+    public function up(): void
+    {
+        Schema::create('invoices', function (Blueprint $table) {
+            $table->id();
 
-        // Tenant (user who pays)
-        $table->unsignedBigInteger('user_id');
+            // user who pays (no "tenant" actor, it's just user)
+            $table->unsignedBigInteger('user_id');
 
-        // Related property
-        $table->unsignedBigInteger('property_id')->nullable();
+            // related property (optional)
+            $table->unsignedBigInteger('property_id')->nullable();
 
-        $table->string('invoice_number')->unique();
-        $table->decimal('amount', 10, 2);
-        $table->enum('status', ['pending', 'paid', 'overdue'])->default('pending');
-        $table->date('due_date');
-        $table->timestamp('paid_at')->nullable();
+            // invoice details
+            $table->string('invoice_number')->unique();
+            $table->decimal('amount', 10, 2);
+            $table->date('due_date');
 
-        $table->timestamps();
+            // match model meaning: pending | paid | overdue
+            $table->enum('status', ['pending', 'paid', 'overdue'])->default('pending');
 
-        // Foreign keys (match seniors' tables)
-        $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-        $table->foreign('property_id')->references('id')->on('properties')->onDelete('set null');
-    });
-}
-  
+            // optional convenience field
+            $table->timestamp('paid_at')->nullable();
 
+            $table->timestamps();
 
-    /**
-     * Reverse the migrations.
-     */
+            // foreign keys
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('property_id')->references('id')->on('properties')->onDelete('set null');
+        });
+    }
+
     public function down(): void
     {
         Schema::dropIfExists('invoices');

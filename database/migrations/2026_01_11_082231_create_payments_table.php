@@ -6,42 +6,31 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
 
-            // Relationships
+            // relationships
             $table->unsignedBigInteger('invoice_id');
-            $table->unsignedBigInteger('user_id'); // tenant = user
+            $table->unsignedBigInteger('user_id'); // user who paid
 
-            // Payment details
+            // payment details (match your Payment model)
             $table->decimal('amount_paid', 10, 2);
-            $table->string('method')->nullable(); // Card, FPX, etc.
-            $table->string('transaction_id')->nullable();
+            $table->string('method')->nullable();       // CARD | FPX | CASH
+            $table->string('gateway')->nullable();      // optional internal gateway name
+            $table->string('gateway_ref')->nullable();  // optional reference
+            $table->enum('status', ['success', 'failed', 'pending'])->default('pending');
             $table->timestamp('payment_date')->nullable();
 
             $table->timestamps();
 
-            // Foreign keys
-            $table->foreign('invoice_id')
-                  ->references('id')
-                  ->on('invoices')
-                  ->onDelete('cascade');
-
-            $table->foreign('user_id')
-                  ->references('id')
-                  ->on('users')
-                  ->onDelete('cascade');
+            // foreign keys
+            $table->foreign('invoice_id')->references('id')->on('invoices')->onDelete('cascade');
+            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('payments');
